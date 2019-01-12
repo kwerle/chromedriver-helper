@@ -1,0 +1,42 @@
+# docker build -t 75 -f Dockerfile.75 .
+# docker run 75
+
+# To check interactively:
+# docker run -it 75 bash
+# In the container: bin/rails test:system
+FROM ruby
+
+# libnss3 is needed by chromedriver
+RUN apt-get update
+RUN apt-get install -y libnss3
+
+# install rails
+RUN gem install rails
+
+# Create the app
+RUN rails new fail_application
+
+WORKDIR /fail_application
+
+# We could probably edit the Gemfile using sed or ruby or something.  This is easy.
+RUN echo "gem 'mini_racer'" >> Gemfile
+
+# Make sure we are all set up - including mini_racer.
+RUN bundle
+
+# Create a scaffold so that we need the chromedriver when we test
+RUN bin/rails g scaffold user name:string
+
+# Get ready to test
+RUN bin/rails db:migrate RAILS_ENV=test
+
+# We are ready to go!  The container should just work.
+
+CMD bin/rails test:system
+
+# Expected output: happy testing.  Green .'s
+# Instead:
+# Error:
+# UsersTest#test_visiting_the_index:
+# Selenium::WebDriver::Error::UnknownError: unknown error: cannot find Chrome binary
+#   (Driver info: chromedriver=2.45.615279 (12b89733300bd268cff3b78fc76cb8f3a7cc44e5),platform=Linux 4.9.125-linuxkit x86_64)
